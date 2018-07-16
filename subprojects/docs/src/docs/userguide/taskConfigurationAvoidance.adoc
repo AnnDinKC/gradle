@@ -170,6 +170,11 @@ The first part of the migration process is to go through the code and manually m
 The following explores the recommended steps for a successful migration.
 While going through those steps, keep in mind <<task_configuration_avoidance_general, the guidelines>>.
 
+[NOTE]
+====
+Migrating plugin code as follow will lock the runtime to Gradle 4.9 and above. Plugin authors should refer to the migration for backward compatibility.
+====
+
 1. **Migrate task configuration that affects all tasks (`tasks.all {}`) or subsets by type (`tasks.withType(...) {}`).**
 This will cause your build to create fewer built-in Gradle task types.
 Note that despite some built-in Gradle task aren’t using the lazy APIs, the configuration affecting those task type should still be migrated.
@@ -352,6 +357,32 @@ The following https://github.com/gradle/gradle-native/issues/730[issue is tracki
 Even though this issue wasn't released with Gradle 4.9, you should reference the `jar` task lazily.
 
 * [[task_configuration_avoidance_pitfall_build_scan_plugin]] **The build scan plugin `buildScanPublishPrevious` task is eager until version 1.15.** Upgrade the build scan plugin in your build to use the latest version.
+
+==== How to keep backward compatibility for plugin authors?
+
+Plugin authors may have additional obligation regarding backward compatibility.
+For this reason, the Gradle team have created a shim plugin to help plugin authors that needs to support older version of Gradle (below 4.9).
+
+In your plugin's build script add the following:
+```
+repositories {
+    gradlePluginPortal()
+}
+
+dependencies {
+    implementation "org.gradle:lazy-shim:latest.release"
+}
+```
+
+In your plugin code, use `TaskContainerUtil#register(...)`, `TaskContainerUtil#configureEach(...)`, and `TaskContainerUtil#named(...)` instead of `TaskContainer#register(...)`, `TaskContainer#configureEach(...)` and `TaskContainer#named(...)`.
+Those shim methods will return a `TaskProviderShim` that act in all ways as a `TaskProvider`.
+The method `TaskProviderShim#get(), and `TaskProviderShim#configure(...)` are available as homologous to `TaskProvider#get()` and `TaskProvider#configure(...)`.
+
+[NOTE]
+====
+Although the library allow for backward compability, it is still recommended to move compatibility forward to 4.9 and later sooner rather than later.
+The shim library is only provided as stop gap for plugins with exceptional backward compatibility requirements.
+====
 
 [[sec:old_vs_new_configuration_api_overview]]
 === Old vs New API overview
